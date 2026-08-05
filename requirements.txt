@@ -1,0 +1,5 @@
+# La instalacion de llama-cpp-python con soporte CUDA se hace aparte
+# (ver celda 2 del notebook), porque necesita CMAKE_ARGS antes de pip install.
+huggingface_hub
+gitpython
+ipywidgets
