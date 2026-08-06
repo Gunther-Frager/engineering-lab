@@ -16,6 +16,8 @@ from llama_cpp import Llama
 
 from llm.base import LLMInterface
 
+# Repo y archivo GGUF por defecto. Cambiar aca no afecta a nadie mas
+# que a este archivo: esa es la idea de la interfaz comun.
 DEFAULT_REPO_ID = "Qwen/Qwen2.5-Coder-14B-Instruct-GGUF"
 DEFAULT_FILENAME = "qwen2.5-coder-14b-instruct-q4_k_m.gguf"
 
@@ -32,23 +34,21 @@ class QwenCoder(LLMInterface):
         self,
         repo_id: str = DEFAULT_REPO_ID,
         filename: str = DEFAULT_FILENAME,
-        n_gpu_layers: int = -1,
+        n_gpu_layers: int = -1,   # -1 = offload todo lo que entre en la T4
         n_ctx: int = 8192,
         verbose: bool = False,
     ):
         models_dir = _default_models_dir()
         models_dir.mkdir(parents=True, exist_ok=True)
 
-        # Siempre llamamos a hf_hub_download: si el archivo ya esta completo,
-        # no vuelve a bajar nada (lo detecta el propio huggingface_hub). Si
-        # quedo incompleto por un corte de conexion, esto SI lo retoma o
-        # rehace en vez de darlo por bueno solo porque el archivo existe.
-        print(f"Verificando/descargando {filename} desde {repo_id}...")
-        model_path = Path(hf_hub_download(
-            repo_id=repo_id,
-            filename=filename,
-            local_dir=str(models_dir),
-        ))
+        model_path = models_dir / filename
+        if not model_path.exists():
+            print(f"Descargando {filename} desde {repo_id} (una sola vez, puede tardar)...")
+            model_path = Path(hf_hub_download(
+                repo_id=repo_id,
+                filename=filename,
+                local_dir=str(models_dir),
+            ))
 
         print(f"Cargando modelo en GPU (n_gpu_layers={n_gpu_layers})...")
         self.llm = Llama(
@@ -80,6 +80,10 @@ class QwenCoder(LLMInterface):
                 yield delta["content"]
 
     def embed(self, text: str) -> List[float]:
+        # Qwen-Coder no esta pensado como modelo de embeddings.
+        # El metodo existe para cumplir la interfaz; v0.1 no lo llama.
+        # En v0.2 el retriever probablemente instancie un modelo de
+        # embeddings aparte (mas chico) en vez de reusar este.
         raise NotImplementedError("embed() se implementa recien en v0.2 (retriever)")
 
     def tokenize(self, text: str) -> List[int]:
