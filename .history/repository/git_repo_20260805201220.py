@@ -30,17 +30,20 @@ class GitRepository:
 
     def clone(self) -> str:
         if self.local_path.exists():
+            # Ignoramos archivos ocultos (.gitkeep, .gitignore, etc.) al decidir
+            # si la carpeta esta "vacia": para Git cuentan como contenido y
+            # rechaza clonar ahi, pero logicamente no hay nada real todavia.
             visible_contents = [
                 p for p in self.local_path.iterdir()
                 if not p.name.startswith(".")
             ]
             if visible_contents:
-                return self.pull()
+                return f"Ya existe {self.local_path}, uso pull() en vez de clone()."
             for hidden in self.local_path.iterdir():
                 hidden.unlink()
         self.local_path.parent.mkdir(parents=True, exist_ok=True)
         return self._run(
-            ["clone", self.repo_url, str(self.local_path)],
+            ["clone", self.repo_url, self.local_path.name],
             cwd=self.local_path.parent,
         )
 
